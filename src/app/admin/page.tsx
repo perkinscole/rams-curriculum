@@ -1,0 +1,162 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { CurriculumDoc, DocStatus, SUBJECTS } from '@/lib/types';
+import StatusBadge from '@/components/StatusBadge';
+import StageProgress from '@/components/StageProgress';
+
+export default function AdminDashboard() {
+  const [docs, setDocs] = useState<CurriculumDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterSubject, setFilterSubject] = useState('');
+  const [filterGrade, setFilterGrade] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filterStatus) params.set('status', filterStatus);
+    if (filterSubject) params.set('subject', filterSubject);
+    if (filterGrade) params.set('grade', filterGrade);
+
+    fetch(`/api/docs?${params}`)
+      .then(r => r.json())
+      .then(data => setDocs(data.docs || []))
+      .finally(() => setLoading(false));
+  }, [filterStatus, filterSubject, filterGrade]);
+
+  const stats = {
+    total: docs.length,
+    draft: docs.filter(d => d.status === 'draft').length,
+    submitted: docs.filter(d => d.status === 'submitted').length,
+    revision: docs.filter(d => d.status === 'revision_requested').length,
+    approved: docs.filter(d => d.status === 'approved').length,
+  };
+
+  // Count by department
+  const bySubject: Record<string, number> = {};
+  docs.forEach(d => { bySubject[d.subject_area] = (bySubject[d.subject_area] || 0) + 1; });
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Admin Dashboard</h1>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        {[
+          { label: 'Total Docs', value: stats.total, color: 'bg-gray-100 text-gray-700' },
+          { label: 'Drafts', value: stats.draft, color: 'bg-gray-50 text-gray-600' },
+          { label: 'Pending Review', value: stats.submitted, color: 'bg-blue-50 text-blue-700' },
+          { label: 'Revision Requested', value: stats.revision, color: 'bg-yellow-50 text-yellow-700' },
+          { label: 'Approved', value: stats.approved, color: 'bg-green-50 text-green-700' },
+        ].map(stat => (
+          <div key={stat.label} className={`rounded-lg p-4 ${stat.color}`}>
+            <p className="text-2xl font-bold">{stat.value}</p>
+            <p className="text-sm">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Department Breakdown */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 className="font-bold text-gray-800 mb-3">Documents by Department</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+          {SUBJECTS.map(subject => (
+            <div key={subject} className="text-center p-2 rounded bg-gray-50">
+              <p className="text-lg font-bold text-[#8B1A1A]">{bySubject[subject] || 0}</p>
+              <p className="text-xs text-gray-500">{subject}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stage Completion Overview */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 className="font-bold text-gray-800 mb-3">Stage Completion Progress</h2>
+        <div className="grid grid-cols-3 gap-4">
+          {['Stage 1: Desired Results', 'Stage 2: Evidence', 'Stage 3: Learning Plan'].map((label, i) => {
+            const field = `stage${i + 1}_complete` as keyof CurriculumDoc;
+            const complete = docs.filter(d => d[field]).length;
+            const pct = docs.length > 0 ? Math.round((complete / docs.length) * 100) : 0;
+            return (
+              <div key={label}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-600">{label}</span>
+                  <span className="text-gray-500">{complete}/{docs.length}</span>
+                </div>
+                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#8B1A1A] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          <option value="">All Statuses</option>
+          <option value="draft">Draft</option>
+          <option value="submitted">Submitted</option>
+          <option value="revision_requested">Revision Requested</option>
+          <option value="approved">Approved</option>
+        </select>
+        <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          <option value="">All Subjects</option>
+          {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+          <option value="">All Grades</option>
+          <option value="6">Grade 6</option>
+          <option value="7">Grade 7</option>
+          <option value="8">Grade 8</option>
+        </select>
+      </div>
+
+      {/* Documents Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Unit Title</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Teacher</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Subject</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Gr</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Stages</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Updated</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {docs.map(doc => (
+              <tr key={doc.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3">
+                  <Link href={`/admin/docs/${doc.id}`} className="text-[#8B1A1A] font-medium hover:underline">
+                    {doc.unit_title}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">{doc.teacher_name}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{doc.subject_area}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{doc.grade}</td>
+                <td className="px-4 py-3"><StatusBadge status={doc.status as DocStatus} /></td>
+                <td className="px-4 py-3">
+                  <StageProgress stage1={!!doc.stage1_complete} stage2={!!doc.stage2_complete} stage3={!!doc.stage3_complete} size="sm" />
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-400">{new Date(doc.updated_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {docs.length === 0 && (
+          <p className="text-center text-gray-400 py-8">No documents found.</p>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,65 +1,73 @@
-import Image from "next/image";
+import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="flex flex-col items-center">
+      {/* Hero */}
+      <section className="w-full bg-[#8B1A1A] text-white py-16 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <Image src="/logo.png" alt="RAMS" width={120} height={120} className="mx-auto mb-6 rounded-full border-4 border-white/30" />
+          <h1 className="text-4xl font-bold mb-2">RAMS Curriculum Manager</h1>
+          <p className="text-red-200 text-lg mb-1">Robert Adams Middle School</p>
+          <p className="text-red-300 text-sm italic mb-8">Personal, Local, Global</p>
+          <div className="flex flex-wrap gap-4 justify-center">
+            <Link
+              href="/curriculum"
+              className="bg-white text-[#8B1A1A] px-6 py-3 rounded-lg font-semibold hover:bg-red-50 transition"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              Browse Curriculum
+            </Link>
+            <Link
+              href="/login"
+              className="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition"
             >
-              Learning
-            </a>{" "}
-            center.
+              Staff Login
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Info Cards */}
+      <section className="max-w-6xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-6 w-full">
+        <div className="bg-white rounded-lg shadow p-6 border-t-4 border-[#8B1A1A]">
+          <h3 className="font-bold text-lg mb-2 text-gray-800">Understanding by Design</h3>
+          <p className="text-gray-600 text-sm">
+            Our curriculum follows the UBD framework with three stages: Desired Results,
+            Evidence of Learning, and Learning Plan.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="bg-white rounded-lg shadow p-6 border-t-4 border-[#8B1A1A]">
+          <h3 className="font-bold text-lg mb-2 text-gray-800">Grades 6-8</h3>
+          <p className="text-gray-600 text-sm">
+            Browse curriculum documents across all subjects for grades 6, 7, and 8 including
+            core academics and unified arts.
+          </p>
         </div>
-      </main>
+        <div className="bg-white rounded-lg shadow p-6 border-t-4 border-[#8B1A1A]">
+          <h3 className="font-bold text-lg mb-2 text-gray-800">Curriculum Connections</h3>
+          <p className="text-gray-600 text-sm">
+            Discover interdisciplinary opportunities across subjects using AI-powered
+            curriculum analysis.
+          </p>
+        </div>
+      </section>
+
+      {/* Departments */}
+      <section className="max-w-6xl mx-auto px-4 pb-12 w-full">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Our Departments</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          {['ELA', 'Mathematics', 'Science', 'Social Studies', 'Art', 'Computer Science', 'Music', 'Wellness', 'World Language'].map(dept => (
+            <Link
+              key={dept}
+              href={`/curriculum?subject=${encodeURIComponent(dept === 'Computer Science' ? 'Computer Science / Digital Literacy' : dept)}`}
+              className="bg-white rounded-lg shadow p-4 text-center hover:shadow-md transition hover:border-[#8B1A1A] border border-transparent"
+            >
+              <span className="text-sm font-medium text-gray-700">{dept}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
