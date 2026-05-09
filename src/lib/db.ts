@@ -1,95 +1,131 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import bcrypt from 'bcryptjs';
+import { Pool, QueryResultRow } from 'pg';
 
-const DB_PATH = path.join(process.cwd(), 'curriculum.db');
-
-let db: Database.Database;
-
-export function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-    initializeDb(db);
-  }
-  return db;
+declare global {
+  // eslint-disable-next-line no-var
+  var _curriculoPgPool: Pool | undefined;
+  // eslint-disable-next-line no-var
+  var _curriculoSchemaReady: Promise<void> | undefined;
 }
 
-function initializeDb(db: Database.Database) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      name TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('teacher', 'admin')),
-      department TEXT DEFAULT '',
-      created_at TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS curriculum_docs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      teacher_id INTEGER NOT NULL,
-      subject_area TEXT NOT NULL,
-      course TEXT DEFAULT '',
-      unit_title TEXT NOT NULL,
-      grade TEXT NOT NULL CHECK(grade IN ('6', '7', '8')),
-      start_date TEXT DEFAULT '',
-      end_date TEXT DEFAULT '',
-      unit_summary TEXT DEFAULT '',
-      stage1 TEXT DEFAULT '{}',
-      stage2 TEXT DEFAULT '{}',
-      stage3 TEXT DEFAULT '{}',
-      stage1_complete INTEGER DEFAULT 0,
-      stage2_complete INTEGER DEFAULT 0,
-      stage3_complete INTEGER DEFAULT 0,
-      status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'submitted', 'revision_requested', 'approved')),
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (teacher_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS doc_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      doc_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      action TEXT NOT NULL,
-      changes_json TEXT DEFAULT '{}',
-      note TEXT DEFAULT '',
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (doc_id) REFERENCES curriculum_docs(id),
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS notes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      doc_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      content TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (doc_id) REFERENCES curriculum_docs(id),
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-  `);
-
-  // Seed default admin if no users exist
-  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
-  if (userCount.count === 0) {
-    const adminHash = bcrypt.hashSync('admin123', 10);
-    const teacherHash = bcrypt.hashSync('teacher123', 10);
-
-    db.prepare(`INSERT INTO users (email, password_hash, name, role, department) VALUES (?, ?, ?, ?, ?)`)
-      .run('admin@holliston.k12.ma.us', adminHash, 'Admin User', 'admin', 'Administration');
-
-    db.prepare(`INSERT INTO users (email, password_hash, name, role, department) VALUES (?, ?, ?, ?, ?)`)
-      .run('teacher@holliston.k12.ma.us', teacherHash, 'Jane Smith', 'teacher', 'Science');
-
-    db.prepare(`INSERT INTO users (email, password_hash, name, role, department) VALUES (?, ?, ?, ?, ?)`)
-      .run('teacher2@holliston.k12.ma.us', teacherHash, 'John Doe', 'teacher', 'ELA');
-
-    console.log('Database seeded with default users');
+function getPool(): Pool {
+  if (!global._curriculoPgPool) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('DATABASE_URL is not set. Add it to .env.local (Neon Postgres connection string).');
+    }
+    global._curriculoPgPool = new Pool({
+      connectionString,
+      ssl: connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : undefined,
+    });
   }
+  return global._curriculoPgPool;
 }
 
-export default getDb;
+async function ensureSchema(): Promise<void> {
+  if (!global._curriculoSchemaReady) {
+    global._curriculoSchemaReady = (async () => {
+      const pool = getPool();
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS districts (
+          id BIGSERIAL PRIMARY KEY,
+          slug TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          subjects JSONB NOT NULL DEFAULT '[]'::jsonb,
+          grades JSONB NOT NULL DEFAULT '[]'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS users (
+          id BIGSERIAL PRIMARY KEY,
+          district_id BIGINT NOT NULL REFERENCES districts(id) ON DELETE CASCADE,
+          email TEXT NOT NULL,
+          password_hash TEXT NOT NULL,
+          name TEXT NOT NULL,
+          role TEXT NOT NULL CHECK (role IN ('teacher', 'admin')),
+          department TEXT NOT NULL DEFAULT '',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          UNIQUE (district_id, email)
+        );
+        CREATE INDEX IF NOT EXISTS users_email_idx ON users (email);
+
+        CREATE TABLE IF NOT EXISTS curriculum_docs (
+          id BIGSERIAL PRIMARY KEY,
+          district_id BIGINT NOT NULL REFERENCES districts(id) ON DELETE CASCADE,
+          teacher_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          subject_area TEXT NOT NULL,
+          course TEXT NOT NULL DEFAULT '',
+          unit_title TEXT NOT NULL,
+          grade TEXT NOT NULL,
+          start_date TEXT NOT NULL DEFAULT '',
+          end_date TEXT NOT NULL DEFAULT '',
+          unit_summary TEXT NOT NULL DEFAULT '',
+          stage1 JSONB NOT NULL DEFAULT '{}'::jsonb,
+          stage2 JSONB NOT NULL DEFAULT '{}'::jsonb,
+          stage3 JSONB NOT NULL DEFAULT '{}'::jsonb,
+          stage1_complete BOOLEAN NOT NULL DEFAULT false,
+          stage2_complete BOOLEAN NOT NULL DEFAULT false,
+          stage3_complete BOOLEAN NOT NULL DEFAULT false,
+          status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'revision_requested', 'approved')),
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+        CREATE INDEX IF NOT EXISTS curriculum_docs_district_idx ON curriculum_docs (district_id);
+
+        CREATE TABLE IF NOT EXISTS doc_history (
+          id BIGSERIAL PRIMARY KEY,
+          district_id BIGINT NOT NULL REFERENCES districts(id) ON DELETE CASCADE,
+          doc_id BIGINT NOT NULL REFERENCES curriculum_docs(id) ON DELETE CASCADE,
+          user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          action TEXT NOT NULL,
+          changes_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+          note TEXT NOT NULL DEFAULT '',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS notes (
+          id BIGSERIAL PRIMARY KEY,
+          district_id BIGINT NOT NULL REFERENCES districts(id) ON DELETE CASCADE,
+          doc_id BIGINT NOT NULL REFERENCES curriculum_docs(id) ON DELETE CASCADE,
+          user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          content TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `);
+    })().catch((err) => {
+      global._curriculoSchemaReady = undefined;
+      throw err;
+    });
+  }
+  await global._curriculoSchemaReady;
+}
+
+export async function query<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = []
+): Promise<T[]> {
+  await ensureSchema();
+  const result = await getPool().query<T>(text, params as never[]);
+  return result.rows;
+}
+
+export async function queryOne<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = []
+): Promise<T | undefined> {
+  const rows = await query<T>(text, params);
+  return rows[0];
+}
+
+export const DEFAULT_SUBJECTS = [
+  'English Language Arts',
+  'Mathematics',
+  'Science',
+  'Social Studies',
+  'Art',
+  'Computer Science',
+  'Music',
+  'Health & Wellness',
+  'World Language',
+];
+
+export const DEFAULT_GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];

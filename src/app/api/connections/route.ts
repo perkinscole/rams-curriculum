@@ -1,43 +1,67 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
-import { CurriculumDoc } from '@/lib/types';
+import { query, queryOne } from '@/lib/db';
+import { getSession } from '@/lib/auth';
+import { CurriculumDoc, parseStage, Stage1, Stage2 } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
-    const { subjects, grade } = await request.json();
-    const db = getDb();
+    const { subjects, grade, districtSlug } = await request.json();
+    const session = await getSession();
 
-    let query = `
-      SELECT d.*, u.name as teacher_name
-      FROM curriculum_docs d
-      JOIN users u ON d.teacher_id = u.id
-      WHERE d.status = 'approved'
+    let districtId: number;
+    let districtName: string;
+
+    if (session) {
+      districtId = session.districtId;
+      districtName = session.districtName;
+    } else if (districtSlug) {
+      const d = await queryOne<{ id: string; name: string }>(
+        `SELECT id, name FROM districts WHERE slug = $1`,
+        [districtSlug]
+      );
+      if (!d) return NextResponse.json({ connections: [] });
+      districtId = Number(d.id);
+      districtName = d.name;
+    } else {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const params: unknown[] = [districtId];
+    let sql = `
+      SELECT d.*, u.name AS teacher_name
+      FROM curriculum_docs d JOIN users u ON d.teacher_id = u.id
+      WHERE d.district_id = $1 AND d.status = 'approved'
     `;
-    const params: string[] = [];
+    let i = 2;
 
     if (grade) {
-      query += ` AND d.grade = ?`;
+      sql += ` AND d.grade = $${i++}`;
       params.push(grade);
     }
 
     if (subjects && subjects.length > 0) {
-      query += ` AND d.subject_area IN (${subjects.map(() => '?').join(',')})`;
+      const placeholders = subjects.map(() => `$${i++}`).join(',');
+      sql += ` AND d.subject_area IN (${placeholders})`;
       params.push(...subjects);
     }
 
-    const docs = db.prepare(query).all(...params) as CurriculumDoc[];
+    const docs = await query<CurriculumDoc>(sql, params);
 
     if (docs.length < 2) {
       return NextResponse.json({
         connections: [],
-        message: 'Need at least 2 approved documents across different subjects to find connections.'
+        message: 'Need at least 2 approved documents across different subjects to find connections.',
       });
     }
 
-    // Build a summary of each doc for Claude
-    const docSummaries = docs.map(doc => {
-      const s1 = JSON.parse(doc.stage1 || '{}');
-      const s2 = JSON.parse(doc.stage2 || '{}');
+    const docSummaries = docs.map((doc) => {
+      const s1 = parseStage<Stage1>(doc.stage1, {
+        learning_standards: '', vog_outcomes: '', transfer: '', enduring_understandings: '',
+        essential_questions: '', knowledge: '', skills: '',
+      });
+      const s2 = parseStage<Stage2>(doc.stage2, {
+        transfer_tasks: '', formative_assessments: '', summative_assessments: '', other_evidence: '',
+      });
       return {
         id: doc.id,
         subject: doc.subject_area,
@@ -59,7 +83,7 @@ export async function POST(request: Request) {
     if (!apiKey) {
       return NextResponse.json({
         connections: [],
-        message: 'AI analysis not configured. Set ANTHROPIC_API_KEY in .env.local to enable curriculum connections.'
+        message: 'AI analysis not configured. Set ANTHROPIC_API_KEY in .env.local to enable curriculum connections.',
       });
     }
 
@@ -71,11 +95,11 @@ export async function POST(request: Request) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 2000,
         messages: [{
           role: 'user',
-          content: `You are a curriculum specialist analyzing UBD (Understanding by Design) curriculum documents for Robert Adams Middle School. Find interdisciplinary connections between these curriculum units.
+          content: `You are a curriculum specialist analyzing UBD (Understanding by Design) curriculum documents for ${districtName}. Find interdisciplinary connections between these curriculum units.
 
 For each connection found, provide:
 1. Which subjects/units are connected
@@ -96,34 +120,32 @@ Respond in JSON format:
       "theme": "Brief description of the connection",
       "details": "Detailed explanation of the interdisciplinary opportunity",
       "collaboration_idea": "Specific suggestion for teacher collaboration",
-      "timing_aligned": true/false
+      "timing_aligned": true
     }
   ],
   "summary": "Overall summary of interdisciplinary opportunities"
-}`
-        }]
-      })
+}`,
+        }],
+      }),
     });
 
     if (!response.ok) {
       return NextResponse.json({
         connections: [],
-        message: 'AI analysis temporarily unavailable. Please try again later.'
+        message: 'AI analysis temporarily unavailable. Please try again later.',
       });
     }
 
     const aiResponse = await response.json();
     const content = aiResponse.content[0]?.text || '{}';
-
-    // Extract JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return NextResponse.json(parsed);
+      return NextResponse.json(JSON.parse(jsonMatch[0]));
     }
 
     return NextResponse.json({ connections: [], message: 'Could not parse AI response.' });
-  } catch {
+  } catch (err) {
+    console.error('connections error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

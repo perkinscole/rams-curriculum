@@ -1,23 +1,18 @@
 export type UserRole = 'teacher' | 'admin';
 export type DocStatus = 'draft' | 'submitted' | 'revision_requested' | 'approved';
-export type Grade = '6' | '7' | '8';
 
-export const SUBJECTS = [
-  'ELA',
-  'Mathematics',
-  'Science',
-  'Social Studies',
-  'Art',
-  'Computer Science / Digital Literacy',
-  'Music',
-  'Wellness',
-  'World Language',
-] as const;
-
-export type Subject = typeof SUBJECTS[number];
+export interface District {
+  id: number;
+  slug: string;
+  name: string;
+  subjects: string[];
+  grades: string[];
+  created_at: string;
+}
 
 export interface User {
   id: number;
+  district_id: number;
   email: string;
   password_hash: string;
   name: string;
@@ -51,24 +46,24 @@ export interface Stage3 {
 
 export interface CurriculumDoc {
   id: number;
+  district_id: number;
   teacher_id: number;
   subject_area: string;
   course: string;
   unit_title: string;
-  grade: Grade;
+  grade: string;
   start_date: string;
   end_date: string;
   unit_summary: string;
-  stage1: string; // JSON string of Stage1
-  stage2: string; // JSON string of Stage2
-  stage3: string; // JSON string of Stage3
-  stage1_complete: number; // 0 or 1
-  stage2_complete: number;
-  stage3_complete: number;
+  stage1: Stage1 | string;
+  stage2: Stage2 | string;
+  stage3: Stage3 | string;
+  stage1_complete: boolean;
+  stage2_complete: boolean;
+  stage3_complete: boolean;
   status: DocStatus;
   created_at: string;
   updated_at: string;
-  // Joined fields
   teacher_name?: string;
   teacher_email?: string;
 }
@@ -78,7 +73,7 @@ export interface DocHistory {
   doc_id: number;
   user_id: number;
   action: string;
-  changes_json: string;
+  changes_json: string | object;
   note: string;
   created_at: string;
   user_name?: string;
@@ -96,7 +91,22 @@ export interface Note {
 
 export interface SessionPayload {
   userId: number;
+  districtId: number;
+  districtSlug: string;
+  districtName: string;
   email: string;
   name: string;
   role: UserRole;
+}
+
+export function parseStage<T>(value: T | string | null | undefined, fallback: T): T {
+  if (!value) return fallback;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return fallback;
+    }
+  }
+  return value;
 }
