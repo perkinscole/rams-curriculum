@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { query, queryOne } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,26 +10,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     const { id } = await params;
-    const db = getDb();
-    const doc = db.prepare('SELECT * FROM curriculum_docs WHERE id = ?').get(parseInt(id)) as { teacher_id: number; status: string } | undefined;
+    const docId = parseInt(id);
+
+    const doc = await queryOne<{ teacher_id: string; status: string; district_id: string }>(
+      `SELECT teacher_id, status, district_id FROM curriculum_docs WHERE id = $1`,
+      [docId]
+    );
 
     if (!doc) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
-
-    if (doc.teacher_id !== session.userId && session.role !== 'admin') {
+    if (Number(doc.district_id) !== session.districtId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-
+    if (Number(doc.teacher_id) !== session.userId && session.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     if (doc.status !== 'draft' && doc.status !== 'revision_requested') {
       return NextResponse.json({ error: 'Can only submit drafts or revision-requested docs' }, { status: 400 });
     }
 
-    db.prepare("UPDATE curriculum_docs SET status = 'submitted', updated_at = datetime('now') WHERE id = ?").run(parseInt(id));
-    db.prepare(`INSERT INTO doc_history (doc_id, user_id, action, note) VALUES (?, ?, 'submitted', 'Submitted for review')`).run(parseInt(id), session.userId);
+    await query(
+      `UPDATE curriculum_docs SET status = 'submitted', updated_at = now() WHERE id = $1`,
+      [docId]
+    );
+    await query(
+      `INSERT INTO doc_history (district_id, doc_id, user_id, action, note)
+       VALUES ($1, $2, $3, 'submitted', 'Submitted for review')`,
+      [session.districtId, docId, session.userId]
+    );
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('submit error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

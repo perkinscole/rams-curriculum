@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { SessionPayload } from '@/lib/types';
@@ -24,22 +23,26 @@ export default function Navbar() {
     router.push('/');
   };
 
+  const browseHref = user ? `/curriculum?district=${user.districtSlug}` : '/curriculum';
+
   return (
-    <nav className="bg-[#8B1A1A] text-white shadow-lg">
+    <nav className="bg-slate-900 text-white shadow">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/logo.png" alt="RAMS" width={40} height={40} className="rounded-full" />
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-indigo-500 text-white font-serif text-lg font-bold">C</span>
             <div>
-              <span className="font-bold text-lg">RAMS Curriculum</span>
-              <span className="hidden sm:inline text-xs text-red-200 ml-2">Robert Adams Middle School</span>
+              <span className="font-semibold text-lg tracking-tight">Curriculo</span>
+              {user && (
+                <span className="hidden sm:inline text-xs text-slate-300 ml-2">{user.districtName}</span>
+              )}
             </div>
           </Link>
 
           <div className="flex items-center gap-1 sm:gap-2">
             <Link
-              href="/curriculum"
-              className={`px-3 py-2 rounded text-sm hover:bg-[#a52525] transition ${pathname.startsWith('/curriculum') ? 'bg-[#a52525]' : ''}`}
+              href={browseHref}
+              className={`px-3 py-2 rounded text-sm hover:bg-slate-800 transition ${pathname.startsWith('/curriculum') ? 'bg-slate-800' : ''}`}
             >
               Curriculum
             </Link>
@@ -49,32 +52,40 @@ export default function Navbar() {
                 {user.role === 'admin' && (
                   <Link
                     href="/admin"
-                    className={`px-3 py-2 rounded text-sm hover:bg-[#a52525] transition ${pathname.startsWith('/admin') ? 'bg-[#a52525]' : ''}`}
+                    className={`px-3 py-2 rounded text-sm hover:bg-slate-800 transition ${pathname.startsWith('/admin') ? 'bg-slate-800' : ''}`}
                   >
                     Admin
                   </Link>
                 )}
                 <Link
                   href="/teacher"
-                  className={`px-3 py-2 rounded text-sm hover:bg-[#a52525] transition ${pathname.startsWith('/teacher') ? 'bg-[#a52525]' : ''}`}
+                  className={`px-3 py-2 rounded text-sm hover:bg-slate-800 transition ${pathname.startsWith('/teacher') ? 'bg-slate-800' : ''}`}
                 >
                   {user.role === 'admin' ? 'Docs' : 'My Docs'}
                 </Link>
-                <span className="text-red-200 text-xs hidden sm:inline px-2">{user.name}</span>
+                <span className="text-slate-300 text-xs hidden sm:inline px-2">{user.name}</span>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-2 rounded text-sm hover:bg-[#a52525] transition"
+                  className="px-3 py-2 rounded text-sm hover:bg-slate-800 transition"
                 >
                   Logout
                 </button>
               </>
             ) : (
-              <Link
-                href="/login"
-                className={`px-3 py-2 rounded text-sm hover:bg-[#a52525] transition ${pathname === '/login' ? 'bg-[#a52525]' : ''}`}
-              >
-                Login
-              </Link>
+              <>
+                <Link
+                  href="/login"
+                  className={`px-3 py-2 rounded text-sm hover:bg-slate-800 transition ${pathname === '/login' ? 'bg-slate-800' : ''}`}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/signup"
+                  className="px-3 py-2 rounded text-sm bg-indigo-500 hover:bg-indigo-400 transition"
+                >
+                  Start Free Trial
+                </Link>
+              </>
             )}
           </div>
         </div>

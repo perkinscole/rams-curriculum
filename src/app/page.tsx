@@ -1,72 +1,74 @@
-import Image from 'next/image';
 import Link from 'next/link';
 
 export default function Home() {
   return (
     <div className="flex flex-col items-center">
-      {/* Hero */}
-      <section className="w-full bg-[#8B1A1A] text-white py-16 px-4">
+      <section className="w-full bg-slate-900 text-white py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <Image src="/logo.png" alt="RAMS" width={120} height={120} className="mx-auto mb-6 rounded-full border-4 border-white/30" />
-          <h1 className="text-4xl font-bold mb-2">RAMS Curriculum Manager</h1>
-          <p className="text-red-200 text-lg mb-1">Robert Adams Middle School</p>
-          <p className="text-red-300 text-sm italic mb-8">Personal, Local, Global</p>
+          <span className="inline-block bg-indigo-500/20 text-indigo-200 text-xs font-medium uppercase tracking-wider px-3 py-1 rounded-full mb-6">
+            For curriculum directors
+          </span>
+          <h1 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight">
+            Curriculum management without the headache.
+          </h1>
+          <p className="text-slate-300 text-lg mb-8 max-w-2xl mx-auto">
+            Curriculo gives your district one place to write, review, and approve unit plans.
+            Built for the way curriculum offices actually work — not the way software companies imagine they do.
+          </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link
-              href="/curriculum"
-              className="bg-white text-[#8B1A1A] px-6 py-3 rounded-lg font-semibold hover:bg-red-50 transition"
+              href="/signup"
+              className="bg-indigo-500 hover:bg-indigo-400 text-white px-6 py-3 rounded-lg font-semibold transition"
             >
-              Browse Curriculum
+              Start Your District&rsquo;s Free Trial
             </Link>
             <Link
               href="/login"
-              className="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition"
+              className="border border-slate-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-800 transition"
             >
-              Staff Login
+              Sign In
             </Link>
           </div>
+          <p className="text-slate-400 text-sm mt-6">No credit card required &middot; Free during pilot</p>
         </div>
       </section>
 
-      {/* Info Cards */}
-      <section className="max-w-6xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-6 w-full">
-        <div className="bg-white rounded-lg shadow p-6 border-t-4 border-[#8B1A1A]">
-          <h3 className="font-bold text-lg mb-2 text-gray-800">Understanding by Design</h3>
-          <p className="text-gray-600 text-sm">
-            Our curriculum follows the UBD framework with three stages: Desired Results,
-            Evidence of Learning, and Learning Plan.
+      <section className="max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-3 gap-6 w-full">
+        <div className="bg-white rounded-lg shadow p-6 border-t-4 border-indigo-500">
+          <h3 className="font-bold text-lg mb-2 text-slate-800">Understanding by Design</h3>
+          <p className="text-slate-600 text-sm">
+            Built around the UBD framework: Desired Results, Evidence of Learning, and Learning Plan.
+            Teachers fill in what they already know how to write.
           </p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6 border-t-4 border-[#8B1A1A]">
-          <h3 className="font-bold text-lg mb-2 text-gray-800">Grades 6-8</h3>
-          <p className="text-gray-600 text-sm">
-            Browse curriculum documents across all subjects for grades 6, 7, and 8 including
-            core academics and unified arts.
+        <div className="bg-white rounded-lg shadow p-6 border-t-4 border-indigo-500">
+          <h3 className="font-bold text-lg mb-2 text-slate-800">Submit, review, approve</h3>
+          <p className="text-slate-600 text-sm">
+            Teachers draft, you review, you approve. Comment threads, revision requests, and full
+            history on every document.
           </p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6 border-t-4 border-[#8B1A1A]">
-          <h3 className="font-bold text-lg mb-2 text-gray-800">Curriculum Connections</h3>
-          <p className="text-gray-600 text-sm">
-            Discover interdisciplinary opportunities across subjects using AI-powered
-            curriculum analysis.
+        <div className="bg-white rounded-lg shadow p-6 border-t-4 border-indigo-500">
+          <h3 className="font-bold text-lg mb-2 text-slate-800">Cross-curricular connections</h3>
+          <p className="text-slate-600 text-sm">
+            Optional AI analysis surfaces interdisciplinary opportunities across approved units &mdash;
+            so your teachers can plan together instead of in silos.
           </p>
         </div>
       </section>
 
-      {/* Departments */}
-      <section className="max-w-6xl mx-auto px-4 pb-12 w-full">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Our Departments</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-          {['ELA', 'Mathematics', 'Science', 'Social Studies', 'Art', 'Computer Science', 'Music', 'Wellness', 'World Language'].map(dept => (
-            <Link
-              key={dept}
-              href={`/curriculum?subject=${encodeURIComponent(dept === 'Computer Science' ? 'Computer Science / Digital Literacy' : dept)}`}
-              className="bg-white rounded-lg shadow p-4 text-center hover:shadow-md transition hover:border-[#8B1A1A] border border-transparent"
-            >
-              <span className="text-sm font-medium text-gray-700">{dept}</span>
-            </Link>
-          ))}
-        </div>
+      <section className="max-w-4xl mx-auto px-4 pb-16 w-full text-center">
+        <h2 className="text-2xl font-bold text-slate-800 mb-4">Ready in five minutes</h2>
+        <p className="text-slate-600 mb-6">
+          Create your district account, invite your teachers, and start collecting unit plans today.
+          No IT ticket required.
+        </p>
+        <Link
+          href="/signup"
+          className="inline-block bg-slate-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-800 transition"
+        >
+          Create Your District Account
+        </Link>
       </section>
     </div>
   );

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { query, queryOne } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,19 +10,33 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     const { id } = await params;
+    const docId = parseInt(id);
     const body = await request.json();
-    const db = getDb();
 
-    const doc = db.prepare('SELECT * FROM curriculum_docs WHERE id = ?').get(parseInt(id));
+    const doc = await queryOne<{ district_id: string }>(
+      `SELECT district_id FROM curriculum_docs WHERE id = $1`,
+      [docId]
+    );
     if (!doc) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
+    if (Number(doc.district_id) !== session.districtId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    db.prepare("UPDATE curriculum_docs SET status = 'revision_requested', updated_at = datetime('now') WHERE id = ?").run(parseInt(id));
-    db.prepare(`INSERT INTO doc_history (doc_id, user_id, action, note) VALUES (?, ?, 'revision_requested', ?)`).run(parseInt(id), session.userId, body.note || 'Revision requested');
+    await query(
+      `UPDATE curriculum_docs SET status = 'revision_requested', updated_at = now() WHERE id = $1`,
+      [docId]
+    );
+    await query(
+      `INSERT INTO doc_history (district_id, doc_id, user_id, action, note)
+       VALUES ($1, $2, $3, 'revision_requested', $4)`,
+      [session.districtId, docId, session.userId, body.note || 'Revision requested']
+    );
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('revision error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

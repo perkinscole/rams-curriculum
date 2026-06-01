@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RAMS Curriculum Manager",
-  description: "Curriculum management for Robert Adams Middle School",
+  title: "Curriculo — Curriculum management for school districts",
+  description: "A simple, organized way for curriculum directors to write, review, and approve unit plans across every grade and subject.",
 };
 
 export default function RootLayout({
@@ -28,12 +28,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-gray-50">
+      <body className="min-h-full flex flex-col bg-slate-50">
         <Navbar />
         <main className="flex-1">{children}</main>
-        <footer className="bg-[#8B1A1A] text-red-200 text-center py-4 text-sm">
-          <p>Robert Adams Middle School &middot; Personal, Local, Global</p>
-          <p className="text-red-300 text-xs mt-1">Holliston Public Schools</p>
+        <footer className="bg-slate-900 text-slate-300 text-center py-4 text-sm">
+          <p>Curriculo &middot; Curriculum management for school districts</p>
         </footer>
       </body>
     </html>
