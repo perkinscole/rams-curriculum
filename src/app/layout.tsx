@@ -14,8 +14,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://curriclio.app"),
   title: "Curriclio — Curriculum management for school districts",
-  description: "A simple, organized way for curriculum directors to write, review, and approve unit plans across every grade and subject.",
+  description: "A simple, organized way for curriculum coordinators to write, review, and approve UBD unit plans across every grade and subject.",
+  openGraph: {
+    title: "Curriclio — Curriculum management for school districts",
+    description: "Curriculum management without the headache. Built for the way curriculum offices actually work.",
+    url: "https://curriclio.app",
+    siteName: "Curriclio",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Curriclio — Curriculum management for school districts",
+    description: "Curriculum management without the headache.",
+  },
 };
 
 export default function RootLayout({

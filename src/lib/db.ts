@@ -14,8 +14,19 @@ function getPool(): Pool {
       throw new Error('DATABASE_URL is not set. Add it to .env.local (Neon Postgres connection string).');
     }
     const isLocal = /localhost|127\.0\.0\.1/.test(connectionString);
+    // Strip sslmode from the URL so our ssl option below isn't overridden.
+    // (pg verifies certs against system CAs when sslmode=require is in the URL,
+    // which breaks against pooled Postgres providers like Supabase.)
+    let cleanedUrl = connectionString;
+    try {
+      const url = new URL(connectionString);
+      url.searchParams.delete('sslmode');
+      cleanedUrl = url.toString();
+    } catch {
+      // leave connection string as-is if it's not a valid URL
+    }
     global._curriclioPgPool = new Pool({
-      connectionString,
+      connectionString: cleanedUrl,
       ssl: isLocal ? undefined : { rejectUnauthorized: false },
     });
   }
