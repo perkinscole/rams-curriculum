@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Curriculo — Curriculum management for school districts",
+  title: "Lectern — Curriculum management for school districts",
   description: "A simple, organized way for curriculum directors to write, review, and approve unit plans across every grade and subject.",
 };
 
@@ -32,7 +32,7 @@ export default function RootLayout({
         <Navbar />
         <main className="flex-1">{children}</main>
         <footer className="bg-slate-900 text-slate-300 text-center py-4 text-sm">
-          <p>Curriculo &middot; Curriculum management for school districts</p>
+          <p>Lectern &middot; Curriculum management for school districts</p>
         </footer>
       </body>
     </html>

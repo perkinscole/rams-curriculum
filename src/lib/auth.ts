@@ -2,8 +2,8 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { SessionPayload } from './types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'curriculo-dev-secret-change-in-production';
-const COOKIE_NAME = 'curriculo_session';
+const JWT_SECRET = process.env.JWT_SECRET || 'lectern-dev-secret-change-in-production';
+const COOKIE_NAME = 'lectern_session';
 
 export function createToken(payload: SessionPayload): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });

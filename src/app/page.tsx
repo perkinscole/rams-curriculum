@@ -12,7 +12,7 @@ export default function Home() {
             Curriculum management without the headache.
           </h1>
           <p className="text-slate-300 text-lg mb-8 max-w-2xl mx-auto">
-            Curriculo gives your district one place to write, review, and approve unit plans.
+            Lectern gives your district one place to write, review, and approve unit plans.
             Built for the way curriculum offices actually work &mdash; not the way software companies imagine they do.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
@@ -41,7 +41,7 @@ export default function Home() {
               <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
               <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
               <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
-              <span className="ml-3 text-xs text-slate-500">curriculo.app / admin</span>
+              <span className="ml-3 text-xs text-slate-500">lectern.app / admin</span>
             </div>
             <div className="p-6 bg-slate-50">
               <div className="flex items-center justify-between mb-4">

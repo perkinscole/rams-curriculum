@@ -30,9 +30,9 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-indigo-500 text-white font-serif text-lg font-bold">C</span>
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-indigo-500 text-white font-serif text-lg font-bold">L</span>
             <div>
-              <span className="font-semibold text-lg tracking-tight">Curriculo</span>
+              <span className="font-semibold text-lg tracking-tight">Lectern</span>
               {user && (
                 <span className="hidden sm:inline text-xs text-slate-300 ml-2">{user.districtName}</span>
               )}
