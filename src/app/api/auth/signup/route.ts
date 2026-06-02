@@ -88,10 +88,17 @@ export async function POST(request: Request) {
 
     return response;
   } catch (err) {
-    const message = (err as { code?: string; message?: string }).code === '23505'
-      ? 'A district with that name or an account with that email already exists.'
-      : 'Internal server error';
+    const e = err as { code?: string; message?: string };
     console.error('Signup error:', err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    if (e.code === '23505') {
+      return NextResponse.json(
+        { error: 'A district with that name or an account with that email already exists.' },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: `Signup failed: ${e.message || 'unknown error'}` },
+      { status: 500 }
+    );
   }
 }

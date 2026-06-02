@@ -13,9 +13,10 @@ function getPool(): Pool {
     if (!connectionString) {
       throw new Error('DATABASE_URL is not set. Add it to .env.local (Neon Postgres connection string).');
     }
+    const isLocal = /localhost|127\.0\.0\.1/.test(connectionString);
     global._curriculoPgPool = new Pool({
       connectionString,
-      ssl: connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : undefined,
+      ssl: isLocal ? undefined : { rejectUnauthorized: false },
     });
   }
   return global._curriculoPgPool;
