@@ -2,29 +2,29 @@ import { Pool, QueryResultRow } from 'pg';
 
 declare global {
   // eslint-disable-next-line no-var
-  var _lecternPgPool: Pool | undefined;
+  var _curriclioPgPool: Pool | undefined;
   // eslint-disable-next-line no-var
-  var _lecternSchemaReady: Promise<void> | undefined;
+  var _curriclioSchemaReady: Promise<void> | undefined;
 }
 
 function getPool(): Pool {
-  if (!global._lecternPgPool) {
+  if (!global._curriclioPgPool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error('DATABASE_URL is not set. Add it to .env.local (Neon Postgres connection string).');
     }
     const isLocal = /localhost|127\.0\.0\.1/.test(connectionString);
-    global._lecternPgPool = new Pool({
+    global._curriclioPgPool = new Pool({
       connectionString,
       ssl: isLocal ? undefined : { rejectUnauthorized: false },
     });
   }
-  return global._lecternPgPool;
+  return global._curriclioPgPool;
 }
 
 async function ensureSchema(): Promise<void> {
-  if (!global._lecternSchemaReady) {
-    global._lecternSchemaReady = (async () => {
+  if (!global._curriclioSchemaReady) {
+    global._curriclioSchemaReady = (async () => {
       const pool = getPool();
       await pool.query(`
         CREATE TABLE IF NOT EXISTS districts (
@@ -93,11 +93,11 @@ async function ensureSchema(): Promise<void> {
         );
       `);
     })().catch((err) => {
-      global._lecternSchemaReady = undefined;
+      global._curriclioSchemaReady = undefined;
       throw err;
     });
   }
-  await global._lecternSchemaReady;
+  await global._curriclioSchemaReady;
 }
 
 export async function query<T extends QueryResultRow = QueryResultRow>(

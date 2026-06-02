@@ -40,7 +40,7 @@ export default function LoginPage() {
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <div className="text-center mb-6">
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-indigo-500 text-white font-serif text-xl font-bold mb-3">C</span>
-          <h1 className="text-2xl font-bold text-slate-800">Sign in to Lectern</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Sign in to Curriclio</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,4 +1,4 @@
-# Lectern
+# Curriclio
 
 Curriculum management for school districts. Curriculum directors create a district account, invite their teachers, and collect Understanding-by-Design unit plans through a draft → submit → review → approve workflow.
 
