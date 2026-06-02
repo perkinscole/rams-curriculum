@@ -102,6 +102,22 @@ async function ensureSchema(): Promise<void> {
           content TEXT NOT NULL,
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
+
+        CREATE TABLE IF NOT EXISTS invitations (
+          id BIGSERIAL PRIMARY KEY,
+          district_id BIGINT NOT NULL REFERENCES districts(id) ON DELETE CASCADE,
+          token TEXT UNIQUE NOT NULL,
+          email TEXT NOT NULL,
+          name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'teacher' CHECK (role IN ('teacher', 'admin')),
+          department TEXT NOT NULL DEFAULT '',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          accepted_at TIMESTAMPTZ,
+          expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '14 days')
+        );
+        CREATE INDEX IF NOT EXISTS invitations_district_idx ON invitations (district_id);
+
+        ALTER TABLE districts ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
       `);
     })().catch((err) => {
       global._curriclioSchemaReady = undefined;

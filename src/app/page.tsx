@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import DemoButton from '@/components/DemoButton';
 
 export default function Home() {
   return (
@@ -15,13 +16,14 @@ export default function Home() {
             Curriclio gives your district one place to write, review, and approve unit plans.
             Built for the way curriculum offices actually work &mdash; not the way software companies imagine they do.
           </p>
-          <div className="flex flex-wrap gap-4 justify-center">
+          <div className="flex flex-wrap gap-4 justify-center items-start">
             <Link
               href="/signup"
               className="bg-indigo-500 hover:bg-indigo-400 text-white px-6 py-3 rounded-lg font-semibold transition"
             >
               Start Your District&rsquo;s Free Trial
             </Link>
+            <DemoButton className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50" />
             <Link
               href="/login"
               className="border border-slate-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-800 transition"
@@ -29,7 +31,7 @@ export default function Home() {
               Sign In
             </Link>
           </div>
-          <p className="text-slate-400 text-sm mt-6">No credit card required &middot; Free during pilot</p>
+          <p className="text-slate-400 text-sm mt-6">No credit card required &middot; Free during pilot &middot; Demo loads in seconds</p>
         </div>
       </section>
 

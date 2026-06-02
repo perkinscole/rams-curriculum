@@ -11,10 +11,12 @@ export function proxy(request: NextRequest) {
     path === '/' ||
     path === '/login' ||
     path === '/signup' ||
+    path.startsWith('/invite/') ||
     path.startsWith('/curriculum') ||
     path.startsWith('/api') ||
     path.startsWith('/_next') ||
-    path === '/favicon.ico'
+    path === '/favicon.ico' ||
+    path === '/icon.svg'
   ) {
     if ((path === '/login' || path === '/signup') && token) {
       return NextResponse.redirect(new URL('/admin', request.url));
