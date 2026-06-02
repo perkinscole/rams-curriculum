@@ -48,15 +48,36 @@ export default function AdminUsersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const [joinToken, setJoinToken] = useState<string | null>(null);
+  const [joinBusy, setJoinBusy] = useState(false);
+
   const refresh = useCallback(async () => {
-    const [u, i] = await Promise.all([
+    const [u, i, j] = await Promise.all([
       fetch('/api/users').then(r => r.json()),
       fetch('/api/invitations').then(r => r.json()),
+      fetch('/api/district/join-link').then(r => r.json()),
     ]);
     setUsers(u.users || []);
     setInvitations(i.invitations || []);
+    setJoinToken(j.joinToken || null);
     setLoading(false);
   }, []);
+
+  const generateJoinLink = async () => {
+    setJoinBusy(true);
+    const res = await fetch('/api/district/join-link', { method: 'POST' });
+    const data = await res.json();
+    setJoinToken(data.joinToken);
+    setJoinBusy(false);
+  };
+
+  const disableJoinLink = async () => {
+    if (!confirm('Disable the join link? Anyone with the current link will no longer be able to join. You can generate a new one anytime.')) return;
+    setJoinBusy(true);
+    await fetch('/api/district/join-link', { method: 'DELETE' });
+    setJoinToken(null);
+    setJoinBusy(false);
+  };
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -133,8 +154,49 @@ export default function AdminUsersPage() {
       <Link href="/admin" className="text-sm text-slate-500 hover:text-slate-700">&larr; Back to Dashboard</Link>
       <h1 className="text-2xl font-bold text-slate-800 mt-2 mb-6">Manage Teachers</h1>
 
+      <div className="bg-white rounded-lg shadow p-6 mb-8 border-l-4 border-indigo-500">
+        <h2 className="font-bold text-slate-800 mb-1">District join link</h2>
+        <p className="text-sm text-slate-500 mb-4">
+          Share one link with all your teachers. Anyone who has it can self-register as a teacher
+          in your district &mdash; like a Google Classroom code. Generate a new link anytime to revoke the old one.
+        </p>
+
+        {joinToken ? (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                readOnly
+                value={typeof window !== 'undefined' ? `${window.location.origin}/join/${joinToken}` : `/join/${joinToken}`}
+                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono bg-slate-50"
+                onFocus={e => e.target.select()}
+              />
+              <button onClick={() => copyToClipboard(`${window.location.origin}/join/${joinToken}`)}
+                className="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-400 whitespace-nowrap">
+                Copy Link
+              </button>
+            </div>
+            <div className="flex gap-3 text-sm">
+              <button onClick={generateJoinLink} disabled={joinBusy}
+                className="text-indigo-600 hover:underline disabled:opacity-50">
+                Generate a new link (invalidates this one)
+              </button>
+              <span className="text-slate-300">|</span>
+              <button onClick={disableJoinLink} disabled={joinBusy}
+                className="text-red-600 hover:underline disabled:opacity-50">
+                Disable join link
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={generateJoinLink} disabled={joinBusy}
+            className="bg-indigo-500 text-white px-5 py-2 rounded-lg font-medium hover:bg-indigo-400 disabled:opacity-50">
+            {joinBusy ? 'Creating link...' : 'Create District Join Link'}
+          </button>
+        )}
+      </div>
+
       <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 className="font-bold text-slate-800 mb-1">Invite people</h2>
+        <h2 className="font-bold text-slate-800 mb-1">Or invite specific people</h2>
         <p className="text-sm text-slate-500 mb-4">
           We&rsquo;ll generate a secure join link for each person. Email it to them &mdash; they pick their own password
           and are signed in instantly. Links expire after 14 days.

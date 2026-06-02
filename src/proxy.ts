@@ -12,6 +12,7 @@ export function proxy(request: NextRequest) {
     path === '/login' ||
     path === '/signup' ||
     path.startsWith('/invite/') ||
+    path.startsWith('/join/') ||
     path.startsWith('/curriculum') ||
     path.startsWith('/api') ||
     path.startsWith('/_next') ||

@@ -118,6 +118,8 @@ async function ensureSchema(): Promise<void> {
         CREATE INDEX IF NOT EXISTS invitations_district_idx ON invitations (district_id);
 
         ALTER TABLE districts ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
+        ALTER TABLE districts ADD COLUMN IF NOT EXISTS join_token TEXT;
+        CREATE UNIQUE INDEX IF NOT EXISTS districts_join_token_idx ON districts (join_token) WHERE join_token IS NOT NULL;
       `);
     })().catch((err) => {
       global._curriclioSchemaReady = undefined;
