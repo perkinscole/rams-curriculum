@@ -1,19 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { CurriculumDoc, DocStatus } from '@/lib/types';
 import StatusBadge from '@/components/StatusBadge';
 import StageProgress from '@/components/StageProgress';
 import { useDistrict } from '@/lib/useDistrict';
 
+type SortField = 'unit_title' | 'teacher_name' | 'subject_area' | 'grade' | 'status' | 'updated_at';
+type SortDir = 'asc' | 'desc';
+
 export default function AdminDashboard() {
   const district = useDistrict();
+  const tableRef = useRef<HTMLDivElement>(null);
   const [docs, setDocs] = useState<CurriculumDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [filterGrade, setFilterGrade] = useState('');
+  const [sortField, setSortField] = useState<SortField>('updated_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -38,7 +44,39 @@ export default function AdminDashboard() {
   const bySubject: Record<string, number> = {};
   docs.forEach(d => { bySubject[d.subject_area] = (bySubject[d.subject_area] || 0) + 1; });
 
+  const jumpToFiltered = (status: string) => {
+    setFilterStatus(status);
+    setTimeout(() => tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir(field === 'updated_at' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortedDocs = [...docs].sort((a, b) => {
+    const av = String(a[sortField] ?? '');
+    const bv = String(b[sortField] ?? '');
+    const cmp = av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const sortIndicator = (field: SortField) =>
+    sortField === field ? <span className="text-indigo-600">{sortDir === 'asc' ? ' ▲' : ' ▼'}</span> : <span className="text-slate-300"> ⇅</span>;
+
   if (loading) return <div className="p-8 text-center text-slate-500">Loading...</div>;
+
+  const statCards: Array<{ label: string; value: number; status: string; color: string; activeColor: string }> = [
+    { label: 'Total Docs', value: stats.total, status: '', color: 'bg-slate-100 text-slate-700', activeColor: 'ring-slate-400' },
+    { label: 'Drafts', value: stats.draft, status: 'draft', color: 'bg-slate-50 text-slate-600', activeColor: 'ring-slate-400' },
+    { label: 'Pending Review', value: stats.submitted, status: 'submitted', color: 'bg-blue-50 text-blue-700', activeColor: 'ring-blue-400' },
+    { label: 'Revision Requested', value: stats.revision, status: 'revision_requested', color: 'bg-yellow-50 text-yellow-700', activeColor: 'ring-yellow-400' },
+    { label: 'Approved', value: stats.approved, status: 'approved', color: 'bg-green-50 text-green-700', activeColor: 'ring-green-400' },
+  ];
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -58,28 +96,33 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        {[
-          { label: 'Total Docs', value: stats.total, color: 'bg-slate-100 text-slate-700' },
-          { label: 'Drafts', value: stats.draft, color: 'bg-slate-50 text-slate-600' },
-          { label: 'Pending Review', value: stats.submitted, color: 'bg-blue-50 text-blue-700' },
-          { label: 'Revision Requested', value: stats.revision, color: 'bg-yellow-50 text-yellow-700' },
-          { label: 'Approved', value: stats.approved, color: 'bg-green-50 text-green-700' },
-        ].map(stat => (
-          <div key={stat.label} className={`rounded-lg p-4 ${stat.color}`}>
-            <p className="text-2xl font-bold">{stat.value}</p>
-            <p className="text-sm">{stat.label}</p>
-          </div>
-        ))}
+        {statCards.map(stat => {
+          const isActive = filterStatus === stat.status;
+          return (
+            <button
+              key={stat.label}
+              onClick={() => jumpToFiltered(stat.status)}
+              className={`text-left rounded-lg p-4 transition hover:shadow-md cursor-pointer ${stat.color} ${isActive ? `ring-2 ${stat.activeColor}` : ''}`}
+            >
+              <p className="text-2xl font-bold">{stat.value}</p>
+              <p className="text-sm">{stat.label}</p>
+            </button>
+          );
+        })}
       </div>
 
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <h2 className="font-bold text-slate-800 mb-3">Documents by Subject</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           {(district?.subjects || []).map(subject => (
-            <div key={subject} className="text-center p-2 rounded bg-slate-50">
+            <button
+              key={subject}
+              onClick={() => { setFilterSubject(subject); tableRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+              className={`text-center p-2 rounded transition hover:bg-indigo-50 ${filterSubject === subject ? 'bg-indigo-50 ring-2 ring-indigo-400' : 'bg-slate-50'}`}
+            >
               <p className="text-lg font-bold text-indigo-600">{bySubject[subject] || 0}</p>
               <p className="text-xs text-slate-500">{subject}</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -106,12 +149,12 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-4">
+      <div ref={tableRef} className="flex flex-wrap items-center gap-3 mb-4">
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
           className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white">
           <option value="">All Statuses</option>
           <option value="draft">Draft</option>
-          <option value="submitted">Submitted</option>
+          <option value="submitted">Pending Review</option>
           <option value="revision_requested">Revision Requested</option>
           <option value="approved">Approved</option>
         </select>
@@ -125,23 +168,43 @@ export default function AdminDashboard() {
           <option value="">All Grades</option>
           {(district?.grades || []).map(g => <option key={g} value={g}>Grade {g}</option>)}
         </select>
+        {(filterStatus || filterSubject || filterGrade) && (
+          <button
+            onClick={() => { setFilterStatus(''); setFilterSubject(''); setFilterGrade(''); }}
+            className="text-sm text-slate-500 hover:text-slate-700 underline"
+          >
+            Clear filters
+          </button>
+        )}
+        <span className="ml-auto text-sm text-slate-500">{sortedDocs.length} document{sortedDocs.length !== 1 ? 's' : ''}</span>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="w-full">
           <thead className="bg-slate-50 border-b">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Unit Title</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Teacher</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Subject</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Gr</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Status</th>
+              {([
+                { f: 'unit_title', l: 'Unit Title' },
+                { f: 'teacher_name', l: 'Teacher' },
+                { f: 'subject_area', l: 'Subject' },
+                { f: 'grade', l: 'Gr' },
+                { f: 'status', l: 'Status' },
+              ] as Array<{ f: SortField; l: string }>).map(col => (
+                <th key={col.f}
+                  onClick={() => toggleSort(col.f)}
+                  className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase cursor-pointer select-none hover:text-slate-700">
+                  {col.l}{sortIndicator(col.f)}
+                </th>
+              ))}
               <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Stages</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Updated</th>
+              <th onClick={() => toggleSort('updated_at')}
+                className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase cursor-pointer select-none hover:text-slate-700">
+                Updated{sortIndicator('updated_at')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {docs.map(doc => (
+            {sortedDocs.map(doc => (
               <tr key={doc.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3">
                   <Link href={`/admin/docs/${doc.id}`} className="text-indigo-600 font-medium hover:underline">
@@ -160,8 +223,8 @@ export default function AdminDashboard() {
             ))}
           </tbody>
         </table>
-        {docs.length === 0 && (
-          <p className="text-center text-slate-400 py-8">No documents found.</p>
+        {sortedDocs.length === 0 && (
+          <p className="text-center text-slate-400 py-8">No documents match these filters.</p>
         )}
       </div>
     </div>
