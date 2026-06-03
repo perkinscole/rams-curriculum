@@ -62,12 +62,24 @@ function CurriculumBrowseContent() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-slate-800">{district?.name || 'Curriculum'}</h1>
         <p className="text-slate-500 mt-1">Approved curriculum units</p>
-        <Link
-          href={`/curriculum/connections${district ? `?district=${district.slug}` : ''}`}
-          className="inline-block mt-3 text-indigo-600 font-medium hover:underline text-sm"
-        >
-          View Curriculum Connections (AI) &rarr;
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-4 justify-center">
+          <Link
+            href={`/curriculum/connections${district ? `?district=${district.slug}` : ''}`}
+            className="text-indigo-600 font-medium hover:underline text-sm"
+          >
+            View Curriculum Connections (AI) &rarr;
+          </Link>
+          {district && (
+            <Link
+              href={`/curriculum/print?district=${district.slug}${filterSubject ? `&subject=${encodeURIComponent(filterSubject)}` : ''}${filterGrade ? `&grade=${filterGrade}` : ''}`}
+              target="_blank"
+              rel="noopener"
+              className="text-indigo-600 font-medium hover:underline text-sm"
+            >
+              Print Full Curriculum Binder &rarr;
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-6 justify-center">

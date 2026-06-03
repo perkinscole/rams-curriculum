@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { CurriculumDoc, Stage1, Stage2, Stage3, Note, DocHistory, DocStatus, parseStage } from '@/lib/types';
 import StatusBadge from '@/components/StatusBadge';
@@ -100,6 +101,10 @@ export default function AdminDocReviewPage() {
         <div className="flex items-center gap-3">
           <StageProgress stage1={!!doc.stage1_complete} stage2={!!doc.stage2_complete} stage3={!!doc.stage3_complete} />
           <StatusBadge status={doc.status as DocStatus} />
+          <Link href={`/docs/${doc.id}/print`} target="_blank" rel="noopener"
+            className="border border-slate-300 px-3 py-1.5 rounded text-sm hover:bg-slate-50">
+            Print / Save as PDF
+          </Link>
         </div>
       </div>
 

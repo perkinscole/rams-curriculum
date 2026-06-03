@@ -1,16 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDistrict } from '@/lib/useDistrict';
+import DocumentUploader from '@/components/DocumentUploader';
 
 export default function NewDocPage() {
   const router = useRouter();
   const district = useDistrict();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadMessage, setUploadMessage] = useState('');
   const [form, setForm] = useState({
     subject_area: '',
     course: '',
@@ -45,56 +43,27 @@ export default function NewDocPage() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !district) return;
-    setUploading(true);
-    setUploadMessage('Extracting and parsing document...');
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/docs/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        setUploadMessage(data.error || 'Upload failed');
-        return;
-      }
-      const f = data.fields;
-      setForm(prev => ({
-        ...prev,
-        ...(f.subject_area && district.subjects.includes(f.subject_area) ? { subject_area: f.subject_area } : {}),
-        ...(f.course ? { course: f.course } : {}),
-        ...(f.unit_title ? { unit_title: f.unit_title } : {}),
-        ...(f.grade && district.grades.includes(f.grade) ? { grade: f.grade } : {}),
-        ...(f.start_date ? { start_date: f.start_date } : {}),
-        ...(f.end_date ? { end_date: f.end_date } : {}),
-        ...(f.unit_summary ? { unit_summary: f.unit_summary } : {}),
-      }));
-      setUploadMessage('Fields populated! Review and create the document, then edit stages.');
-      setTimeout(() => setUploadMessage(''), 5000);
-    } catch {
-      setUploadMessage('Failed to process file.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  const applyParsedFields = (fields: Record<string, unknown>) => {
+    if (!district) return;
+    const f = fields as Record<string, string>;
+    setForm(prev => ({
+      ...prev,
+      ...(f.subject_area && district.subjects.includes(f.subject_area) ? { subject_area: f.subject_area } : {}),
+      ...(f.course ? { course: f.course } : {}),
+      ...(f.unit_title ? { unit_title: f.unit_title } : {}),
+      ...(f.grade && district.grades.includes(f.grade) ? { grade: f.grade } : {}),
+      ...(f.start_date ? { start_date: f.start_date } : {}),
+      ...(f.end_date ? { end_date: f.end_date } : {}),
+      ...(f.unit_summary ? { unit_summary: f.unit_summary } : {}),
+    }));
   };
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-slate-800 mb-6">New Curriculum Document</h1>
 
-      <div className="bg-white rounded-lg shadow p-4 mb-6 flex items-center gap-4">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-slate-700">Import from Document</p>
-          <p className="text-xs text-slate-400">Upload a .docx or .pdf to auto-fill fields</p>
-        </div>
-        <input ref={fileInputRef} type="file" accept=".docx,.pdf" onChange={handleFileUpload} className="hidden" id="file-upload-new" />
-        <label htmlFor="file-upload-new"
-          className={`px-4 py-2 rounded-lg font-medium text-sm cursor-pointer transition ${uploading ? 'bg-slate-300 text-slate-500' : 'bg-indigo-500 text-white hover:bg-indigo-400'}`}>
-          {uploading ? 'Processing...' : 'Upload File'}
-        </label>
-        {uploadMessage && <span className="text-sm text-green-600">{uploadMessage}</span>}
+      <div className="mb-6">
+        <DocumentUploader onParsed={fields => applyParsedFields(fields)} />
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-4">

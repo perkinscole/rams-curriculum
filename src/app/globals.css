@@ -28,3 +28,40 @@ input::placeholder,
 textarea::placeholder {
   color: #94a3b8;
 }
+
+@media print {
+  nav,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  /* Strip shadows and busy backgrounds so PDFs are clean */
+  .shadow,
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl,
+  .shadow-2xl {
+    box-shadow: none !important;
+  }
+
+  .bg-slate-50,
+  .bg-slate-100,
+  .bg-slate-900 {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  @page {
+    margin: 0.6in;
+  }
+}

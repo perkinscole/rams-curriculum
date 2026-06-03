@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { CurriculumDoc, Stage1, Stage2, Stage3, Note, DocHistory, DocStatus, parseStage } from '@/lib/types';
 import StatusBadge from '@/components/StatusBadge';
 import StageProgress from '@/components/StageProgress';
+import DocumentUploader from '@/components/DocumentUploader';
+import Link from 'next/link';
 import { useDistrict } from '@/lib/useDistrict';
 
 const emptyStage1: Stage1 = { learning_standards: '', vog_outcomes: '', transfer: '', enduring_understandings: '', essential_questions: '', knowledge: '', skills: '' };
@@ -15,7 +17,6 @@ export default function DocEditorPage() {
   const { id } = useParams();
   const router = useRouter();
   const district = useDistrict();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [doc, setDoc] = useState<CurriculumDoc | null>(null);
   const [stage1, setStage1] = useState<Stage1>(emptyStage1);
   const [stage2, setStage2] = useState<Stage2>(emptyStage2);
@@ -27,8 +28,6 @@ export default function DocEditorPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [uploadMessage, setUploadMessage] = useState('');
 
   const fetchDoc = useCallback(async () => {
     const res = await fetch(`/api/docs/${id}`);
@@ -100,61 +99,38 @@ export default function DocEditorPage() {
     await save({ [field]: !current });
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !district) return;
+  const applyParsedFields = async (fieldsIn: Record<string, unknown>, documentType: string) => {
+    if (!district) return;
+    const f = fieldsIn as {
+      subject_area?: string; course?: string; unit_title?: string; grade?: string;
+      start_date?: string; end_date?: string; unit_summary?: string;
+      stage1?: Partial<Stage1>; stage2?: Partial<Stage2>; stage3?: Partial<Stage3>;
+    };
+    if (f.stage1) setStage1(prev => ({ ...prev, ...Object.fromEntries(Object.entries(f.stage1!).filter(([, v]) => v)) as Partial<Stage1> }));
+    if (f.stage2) setStage2(prev => ({ ...prev, ...Object.fromEntries(Object.entries(f.stage2!).filter(([, v]) => v)) as Partial<Stage2> }));
+    if (f.stage3) setStage3(prev => ({ ...prev, ...Object.fromEntries(Object.entries(f.stage3!).filter(([, v]) => v)) as Partial<Stage3> }));
 
-    setUploading(true);
-    setUploadMessage('Extracting and parsing document...');
+    const updateBody: Record<string, unknown> = {
+      stage1: { ...stage1, ...(f.stage1 || {}) },
+      stage2: { ...stage2, ...(f.stage2 || {}) },
+      stage3: { ...stage3, ...(f.stage3 || {}) },
+      _note: `Populated from uploaded ${documentType.replace('_', ' ')} document`,
+    };
+    if (f.unit_title) updateBody.unit_title = f.unit_title;
+    if (f.subject_area && district.subjects.includes(f.subject_area)) updateBody.subject_area = f.subject_area;
+    if (f.course) updateBody.course = f.course;
+    if (f.grade && district.grades.includes(f.grade)) updateBody.grade = f.grade;
+    if (f.unit_summary) updateBody.unit_summary = f.unit_summary;
+    if (f.start_date) updateBody.start_date = f.start_date;
+    if (f.end_date) updateBody.end_date = f.end_date;
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/docs/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setUploadMessage(data.error || 'Upload failed');
-        return;
-      }
-
-      const f = data.fields;
-
-      if (f.stage1) setStage1(prev => ({ ...prev, ...Object.fromEntries(Object.entries(f.stage1).filter(([, v]) => v)) }));
-      if (f.stage2) setStage2(prev => ({ ...prev, ...Object.fromEntries(Object.entries(f.stage2).filter(([, v]) => v)) }));
-      if (f.stage3) setStage3(prev => ({ ...prev, ...Object.fromEntries(Object.entries(f.stage3).filter(([, v]) => v)) }));
-
-      const updateBody: Record<string, unknown> = {
-        stage1: { ...stage1, ...f.stage1 },
-        stage2: { ...stage2, ...f.stage2 },
-        stage3: { ...stage3, ...f.stage3 },
-        _note: `Populated from uploaded file: ${file.name}`,
-      };
-      if (f.unit_title) updateBody.unit_title = f.unit_title;
-      if (f.subject_area && district.subjects.includes(f.subject_area)) updateBody.subject_area = f.subject_area;
-      if (f.course) updateBody.course = f.course;
-      if (f.grade && district.grades.includes(f.grade)) updateBody.grade = f.grade;
-      if (f.unit_summary) updateBody.unit_summary = f.unit_summary;
-      if (f.start_date) updateBody.start_date = f.start_date;
-      if (f.end_date) updateBody.end_date = f.end_date;
-
-      await fetch(`/api/docs/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateBody),
-      });
-
-      setUploadMessage('Document parsed and fields populated!');
-      fetchDoc();
-      fetchHistory();
-      setTimeout(() => setUploadMessage(''), 4000);
-    } catch {
-      setUploadMessage('Failed to process file.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    await fetch(`/api/docs/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updateBody),
+    });
+    fetchDoc();
+    fetchHistory();
   };
 
   if (loading) return <div className="p-8 text-center text-slate-500">Loading...</div>;
@@ -182,36 +158,19 @@ export default function DocEditorPage() {
         <div className="flex items-center gap-3">
           <StageProgress stage1={!!doc.stage1_complete} stage2={!!doc.stage2_complete} stage3={!!doc.stage3_complete} />
           <StatusBadge status={doc.status as DocStatus} />
+          <Link href={`/docs/${doc.id}/print`} target="_blank" rel="noopener"
+            className="border border-slate-300 px-3 py-1.5 rounded text-sm hover:bg-slate-50">
+            Print / Save as PDF
+          </Link>
         </div>
       </div>
 
       {isEditable && (
-        <div className="bg-white rounded-lg shadow p-4 mb-6 flex items-center gap-4">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-slate-700">Import from Document</p>
-            <p className="text-xs text-slate-400">Upload a .docx or .pdf UBD document to auto-populate fields</p>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".docx,.pdf"
-            onChange={handleFileUpload}
-            className="hidden"
-            id="file-upload"
+        <div className="mb-6">
+          <DocumentUploader
+            onParsed={(fields, docType) => applyParsedFields(fields, docType)}
+            hintLine="Have an existing curriculum? We&rsquo;ll convert it to UBD."
           />
-          <label
-            htmlFor="file-upload"
-            className={`px-4 py-2 rounded-lg font-medium text-sm cursor-pointer transition ${
-              uploading ? 'bg-slate-300 text-slate-500 cursor-wait' : 'bg-indigo-500 text-white hover:bg-indigo-400'
-            }`}
-          >
-            {uploading ? 'Processing...' : 'Upload File'}
-          </label>
-          {uploadMessage && (
-            <span className={`text-sm ${uploadMessage.includes('fail') || uploadMessage.includes('error') ? 'text-red-600' : 'text-green-600'}`}>
-              {uploadMessage}
-            </span>
-          )}
         </div>
       )}
 
