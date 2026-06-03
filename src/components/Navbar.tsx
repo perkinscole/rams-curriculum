@@ -63,7 +63,12 @@ export default function Navbar() {
                 >
                   {user.role === 'admin' ? 'Docs' : 'My Docs'}
                 </Link>
-                <span className="text-slate-300 text-xs hidden sm:inline px-2">{user.name}</span>
+                <span className="text-slate-300 text-xs hidden sm:inline px-2">
+                  {user.name}
+                  <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide ${user.role === 'admin' ? 'bg-indigo-500/30 text-indigo-100' : 'bg-slate-700 text-slate-300'}`}>
+                    {user.role}
+                  </span>
+                </span>
                 <button
                   onClick={handleLogout}
                   className="px-3 py-2 rounded text-sm hover:bg-slate-800 transition"
