@@ -59,11 +59,20 @@ export default function StandardsPage() {
   const [message, setMessage] = useState('');
   const [expandedStandard, setExpandedStandard] = useState<number | null>(null);
   const [teacherFilter, setTeacherFilter] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const refreshFrameworks = useCallback(async () => {
-    const res = await fetch('/api/standards/frameworks');
-    const data = await res.json();
-    setFrameworks(data.frameworks || []);
+    try {
+      const res = await fetch('/api/standards/frameworks');
+      const data = await res.json();
+      if (!res.ok) {
+        setActionError(data.error || `Could not load frameworks (HTTP ${res.status})`);
+      } else {
+        setFrameworks(data.frameworks || []);
+      }
+    } catch (err) {
+      setActionError(`Network error loading frameworks: ${err instanceof Error ? err.message : 'unknown'}`);
+    }
     setLoading(false);
   }, []);
 
@@ -83,12 +92,22 @@ export default function StandardsPage() {
   }, [activeId, loadCoverage]);
 
   const toggleFramework = async (fw: Framework) => {
-    await fetch('/api/standards/frameworks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ frameworkId: fw.id, enabled: !fw.enabled }),
-    });
-    refreshFrameworks();
+    setActionError('');
+    try {
+      const res = await fetch('/api/standards/frameworks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ frameworkId: fw.id, enabled: !fw.enabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError(data.error || `Toggle failed (HTTP ${res.status})`);
+        return;
+      }
+      refreshFrameworks();
+    } catch (err) {
+      setActionError(`Network error: ${err instanceof Error ? err.message : 'unknown'}`);
+    }
   };
 
   const runAnalysis = async () => {
@@ -177,27 +196,43 @@ export default function StandardsPage() {
       ) : (
         <>
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="font-bold text-slate-800 mb-3">Available frameworks</h2>
-            <p className="text-xs text-slate-500 mb-4">Enable the frameworks your district uses. Each contains a starter set of standards — admins can request more be added.</p>
-            <div className="grid md:grid-cols-2 gap-3">
-              {frameworks.map(fw => (
-                <div key={fw.id} className={`border rounded-lg p-3 flex items-start justify-between gap-3 ${fw.enabled ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-200'}`}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-slate-800 text-sm">{fw.name}</p>
-                      {fw.state && <span className="text-xs bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">{fw.state}</span>}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5">{fw.subject} &middot; Grades {fw.grade_band} &middot; {fw.standards_count} standards</p>
-                  </div>
-                  <button onClick={() => toggleFramework(fw)}
-                    className={`text-xs px-3 py-1.5 rounded font-medium whitespace-nowrap ${
-                      fw.enabled ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' : 'bg-indigo-500 text-white hover:bg-indigo-400'
-                    }`}>
-                    {fw.enabled ? 'Disable' : 'Enable'}
-                  </button>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-slate-800">Available frameworks</h2>
+              <button onClick={refreshFrameworks} className="text-xs text-indigo-600 hover:underline">Refresh</button>
             </div>
+            {actionError && (
+              <div className="bg-red-50 text-red-700 p-3 rounded text-sm mb-3">{actionError}</div>
+            )}
+            <p className="text-xs text-slate-500 mb-4">Enable the frameworks your district uses. Each contains a starter set of standards &mdash; admins can request more be added.</p>
+            {frameworks.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50 rounded">
+                <p className="text-slate-600 mb-1">No frameworks loaded.</p>
+                <p className="text-xs text-slate-500">
+                  This usually means the seed data hasn&rsquo;t run yet on your database.
+                  Try a hard refresh, or contact support.
+                </p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-3">
+                {frameworks.map(fw => (
+                  <div key={fw.id} className={`border rounded-lg p-3 flex items-start justify-between gap-3 ${fw.enabled ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-200'}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-800 text-sm">{fw.name}</p>
+                        {fw.state && <span className="text-xs bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">{fw.state}</span>}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">{fw.subject} &middot; Grades {fw.grade_band} &middot; {fw.standards_count} standards</p>
+                    </div>
+                    <button onClick={() => toggleFramework(fw)}
+                      className={`text-xs px-3 py-1.5 rounded font-medium whitespace-nowrap ${
+                        fw.enabled ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' : 'bg-indigo-500 text-white hover:bg-indigo-400'
+                      }`}>
+                      {fw.enabled ? 'Disable' : 'Enable'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {frameworks.some(f => f.enabled) ? (
