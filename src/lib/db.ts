@@ -1,4 +1,5 @@
 import { Pool, QueryResultRow } from 'pg';
+import { FRAMEWORK_SEEDS } from './standards-seed';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -120,7 +121,48 @@ async function ensureSchema(): Promise<void> {
         ALTER TABLE districts ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT false;
         ALTER TABLE districts ADD COLUMN IF NOT EXISTS join_token TEXT;
         CREATE UNIQUE INDEX IF NOT EXISTS districts_join_token_idx ON districts (join_token) WHERE join_token IS NOT NULL;
+
+        CREATE TABLE IF NOT EXISTS standards_frameworks (
+          id BIGSERIAL PRIMARY KEY,
+          slug TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          state TEXT,
+          subject TEXT NOT NULL,
+          grade_band TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS standards (
+          id BIGSERIAL PRIMARY KEY,
+          framework_id BIGINT NOT NULL REFERENCES standards_frameworks(id) ON DELETE CASCADE,
+          code TEXT NOT NULL,
+          description TEXT NOT NULL,
+          grade TEXT NOT NULL,
+          domain TEXT NOT NULL DEFAULT '',
+          UNIQUE (framework_id, code)
+        );
+
+        CREATE TABLE IF NOT EXISTS district_frameworks (
+          district_id BIGINT NOT NULL REFERENCES districts(id) ON DELETE CASCADE,
+          framework_id BIGINT NOT NULL REFERENCES standards_frameworks(id) ON DELETE CASCADE,
+          enabled_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (district_id, framework_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS doc_standards_coverage (
+          id BIGSERIAL PRIMARY KEY,
+          district_id BIGINT NOT NULL REFERENCES districts(id) ON DELETE CASCADE,
+          doc_id BIGINT NOT NULL REFERENCES curriculum_docs(id) ON DELETE CASCADE,
+          framework_id BIGINT NOT NULL REFERENCES standards_frameworks(id) ON DELETE CASCADE,
+          standard_id BIGINT NOT NULL REFERENCES standards(id) ON DELETE CASCADE,
+          depth INTEGER NOT NULL CHECK (depth BETWEEN 0 AND 3),
+          rationale TEXT NOT NULL DEFAULT '',
+          analyzed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          UNIQUE (doc_id, standard_id)
+        );
+        CREATE INDEX IF NOT EXISTS coverage_district_framework_idx ON doc_standards_coverage (district_id, framework_id);
       `);
+      await seedFrameworks();
     })().catch((err) => {
       global._curriclioSchemaReady = undefined;
       throw err;
@@ -159,3 +201,26 @@ export const DEFAULT_SUBJECTS = [
 ];
 
 export const DEFAULT_GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+
+async function seedFrameworks(): Promise<void> {
+  const pool = getPool();
+  for (const fw of FRAMEWORK_SEEDS) {
+    const fwRow = await pool.query<{ id: string }>(
+      `INSERT INTO standards_frameworks (slug, name, state, subject, grade_band, description)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description
+       RETURNING id`,
+      [fw.slug, fw.name, fw.state, fw.subject, fw.grade_band, fw.description]
+    );
+    const fwId = fwRow.rows[0]?.id;
+    if (!fwId) continue;
+    for (const s of fw.standards) {
+      await pool.query(
+        `INSERT INTO standards (framework_id, code, description, grade, domain)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (framework_id, code) DO UPDATE SET description = EXCLUDED.description, grade = EXCLUDED.grade, domain = EXCLUDED.domain`,
+        [fwId, s.code, s.description, s.grade, s.domain]
+      );
+    }
+  }
+}
