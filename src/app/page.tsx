@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import DemoButton from '@/components/DemoButton';
+import SalesChat from '@/components/SalesChat';
 
 export default function Home() {
   return (
@@ -141,6 +142,8 @@ export default function Home() {
           Create Your District Account
         </Link>
       </section>
+
+      <SalesChat />
     </div>
   );
 }
